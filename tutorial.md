@@ -11,6 +11,11 @@ output:
 ### Welcome to the Microbiome Tutorial!
 Today we will analyse some microbiome data and look for a microbiome signature that distinguishes a cohort of patients between those with colorectal cancer (CRC) and healthy controls.
 
+To run through this tutorial, follow the text and instructions below.
+To run the code below, copy and paste it to the **Console** window in R studio and hit *Enter*.
+You can use the *up* and *down* arrows on your keyboard to cycle through previous commands.
+To view plots in a lager format, use the *Zoom* button in the lower right panel of Rstudio.
+The *left* and *right* arrows in that same panel help you to cycle through plots you have already made.
 
 ### Load Packages
 
@@ -30,8 +35,8 @@ Data files are prepared for you as phyloseq objects.
 We load the phyloseq object required for this tutorial:
 
 ```r
-thomasB2 <- readRDS("C:/Users/clw840/Documents/thomasB2.rds")
-thomasBtree <- read_tree("C:/Users/clw840/Documents/ThomasAM_2018b.tree")
+thomasB2 <- readRDS("thomasB2.rds")
+thomasBtree <- read_tree("ThomasAM_2018b.tree")
 ```
 
 you can see from the code that we have loaded a tree file (_ThomasAM_2018b.tree_) with the phyloseq object.
@@ -83,7 +88,7 @@ What does this tell us about the difference between healthy individuals and indi
 How many samples do we have in the dataset for each condition?
 
 ```r
-nsamples(thomasB2prune0)
+phyloseq::nsamples(thomasB2prune0)
 ```
 
 Now that we know how many samples to expect, does the plot accurately reflect the number of samples in the dataset?
@@ -91,8 +96,9 @@ Even bioinformaticians sometimes just count the dots.
 
 
 ```r
-p = plot_richness(thomasB2prune0, measures=c("Observed", "Shannon"), x="disease", color="disease")
-p + geom_jitter(width=0.1)
+p = phyloseq::plot_richness(thomasB2prune0, measures=c("Observed", "Shannon"), x="disease", color="disease")
+p$layers <- p$layers[-1]
+p + ggplot2::geom_jitter(width=0.2)
 ```
 
 Check the number of samples again now.
@@ -110,7 +116,7 @@ One useful measure of beta-diversity is the Weighted UniFrac distance:
 
 ```r
 ord = ordinate(thomasB2prune0, "PCoA", "unifrac", weighted=TRUE)
-ordplot <- plot_ordination(thomasBprune0, ord, color="disease", title="Weighted Unifrac Distance CRC vs Healthy")
+ordplot <- plot_ordination(thomasB2prune0, ord, color="disease", title="PCoA Weighted Unifrac Distance CRC vs Healthy")
 ordplot +
 stat_ellipse(type = "norm") +
 theme_bw()
@@ -119,8 +125,8 @@ theme_bw()
 Another useful measure of beta-diversity is Bray-Curtis Dissimilarity:
 
 ```r
-ordbray = ordinate(thomasB2prune0, "NMDS", "bray", weighted=TRUE)
-ordbrayplot <- plot_ordination(thomasBprune0, ordbray, color="disease", title="Bray-Curtis Dissimilarity CRC vs Healthy")
+ordbray = ordinate(thomasB2prune0, "PCoA", "bray")
+ordbrayplot <- plot_ordination(thomasB2prune0, ordbray, color="disease", title="PCoA Bray-Curtis Dissimilarity CRC vs Healthy")
 ordbrayplot +
 stat_ellipse(type = "norm") +
 theme_bw()
@@ -138,16 +144,37 @@ In order to perform this analysis, we will use the DESeq2 package.
 
 
 
-
 ```r
 thomasB2ds = phyloseq_to_deseq2(thomasB2prune0, ~ disease)
+```
+
+One of the first things to do here is to set the baseline against which we calculate the log2 fold change of abundances.
+This is called 'reveling'.
+In this instance, we relevel the groups (CRC and healthy) in order to calculate log2 fold changes of taxa abundance for CRC against the healthy group:
+
+```r
 thomasB2ds$disease <- relevel( thomasB2ds$disease, "healthy")
+```
+
+Then calculate the log2 fold change:
+
+```r
 thomasB2ds = DESeq(thomasB2ds, test="Wald", fitType="parametric")
 thomasB2res = results(thomasB2ds, cooksCutoff = FALSE)
 alpha = 0.005
 sigtab = thomasB2res[which(thomasB2res$padj < alpha), ]
 sigtab = cbind(as(sigtab, "data.frame"), as(tax_table(thomasB2prune0)[rownames(sigtab), ], "matrix"))
 View(sigtab)
+```
+Examine the table that comes up in Rstudio.
+the log2FoldChange column shows the difference in abundance as log2(CRC/healthy) for all taxa in the dataset.
+You can use the arrows for each column header to sort table in different ways.
+For example, sort the table by log2FoldChange in descending order. What does this sort show?
+There are more species in the dataset that we see here. Why are only a few shown in the table?
+
+Run the code below to get a plot of differentially abundant genera:
+
+```r
 library("ggplot2")
 theme_set(theme_bw())
 scale_fill_discrete <- function(palname = "Set2", ...) {
@@ -159,14 +186,13 @@ sigtab$Genus = factor(as.character(sigtab$Genus), levels=names(x))
 ggplot(sigtab, aes(x=Genus, y=log2FoldChange, color=Phylum, )) + geom_point(size=6) +
 theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust=0.5)) + ggtitle("Log2 Fold Change Genus Abundance (CRC vs Healthy)")
 ```
+Data points are sorted by log2FoldChange in descending order and coloured by phylum. Which phyla are highly represented amongst the colorectal cancer biomarkers?
 
-
-to see this at species level:
+Viewing at the Genus level is one way to identify CRC biomarkers.
+To see this at species level:
 ```{r]}
-x = tapply(sigtab$log2FoldChange, sigtab$Species, function(x) max(x))
-x = sort(x, TRUE)
-sigtab$Species = factor(as.character(sigtab$Species), levels=names(x))save.image(file='C:/Users/clw840/Documents/crc.RData')
-
+species_order = sigtab$Species[order(sigtab$log2FoldChange, decreasing = TRUE)]
+sigtab$Species = factor(sigtab$Species, levels = species_order, ordered = T)
 ggplot(sigtab, aes(x=Species, y=log2FoldChange, color=Phylum)) + geom_point(size=6) +
 theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))+ ggtitle("Log2 Fold Change Species Abundance (CRC vs Healthy)")
 ```
