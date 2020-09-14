@@ -8,14 +8,14 @@ output:
 ---
 
 
-### Welcome to the Microbiome Tutorial!
+## Welcome to the Microbiome Tutorial!
 Today we will analyse some microbiome data and look for a microbiome signature that distinguishes a cohort of patients between those with colorectal cancer (CRC) and healthy controls.
 
 To run through this tutorial, follow the text and instructions below.
 To run the code below, copy and paste it to the **Console** window in R studio and hit *Enter*.
 You can use the *up* and *down* arrows on your keyboard to cycle through previous commands.
-To view plots in a lager format, use the *Zoom* button in the lower right panel of Rstudio.
-The *left* and *right* arrows in that same panel help you to cycle through plots you have already made.
+To view plots in a larger format, use the *Zoom* button in the lower right panel of Rstudio, on the tab marked **Plots**.
+The *left* and *right* arrows in that same tab help you to cycle through plots you have already made.
 
 ### Load Packages
 
@@ -30,8 +30,8 @@ library(DESeq2)
 
 ### Load Data
 
-Now that we have our packages loaded, we can load the data file for this exercise.
-Data files are prepared for you as phyloseq objects.
+Now that we have our packages loaded, we can load the data files for this exercise.
+Data files are prepared for you as *phyloseq* objects.
 We load the phyloseq object required for this tutorial:
 
 ```r
@@ -39,10 +39,10 @@ thomasB2 <- readRDS("thomasB2.rds")
 thomasBtree <- read_tree("ThomasAM_2018b.tree")
 ```
 
-you can see from the code that we have loaded a tree file (_ThomasAM_2018b.tree_) with the phyloseq object.
+you can see from the code that we also load a tree file (_ThomasAM_2018b.tree_) with the phyloseq object.
 This is a phylogenetic tree which shows the relationship between all of the taxa in our data.
 
-First step will be to merge this phylogenetic tree with the loaded phyloseq object.
+The first step will be to merge this phylogenetic tree with the loaded phyloseq object.
 This will be needed later when we work with distance measures (in particular Weighted UniFrac):
 
 ```r
