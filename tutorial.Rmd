@@ -1,13 +1,13 @@
-#```{r}`
+#```r
 thomasB2 <- readRDS("C:/Users/clw840/Documents/thomasB2.rds")
 #```
 #merge phylogenetic tree with phyloseq object
 #useful later when we are working with distane measures (wt. unifrac)
-#```{r}`
+#```r
 thomasB2phylo = merge_phyloseq(thomasB2, thomasBtree)
 #```
 #set colour theme for this part of the exercise
-#```{r}`
+#```r
 theme_set(theme_bw())
 pal = "Set1"
 scale_colour_discrete <-  function(palname=pal, ...){
@@ -18,13 +18,13 @@ scale_fill_brewer(palette=palname, ...)
 }
 #```
 #prune all taxa across samples with 0 counts
-#```{r}
+#```r
 thomasB2prune0 <- prune_taxa(taxa_sums(thomasB2phylo) > 0, thomasB2phylo)
 #```
 #let's have a look at the alpha diversity between CRC and healthy samples
 #alpha diversity shows us the within sample diversity, i.e. how many taxa there are within each sample
 #we can compare this for all samples in CRC against all samples in healthy individuals
-#```{r]
+#```r
 plot_richness(thomasB2prune0, measures=c("Observed", "Shannon"), x="disease", color="disease")
 #```
 #Are there any differences between healthy and CRC?
