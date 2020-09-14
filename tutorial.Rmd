@@ -1,0 +1,89 @@
+#```{r}`
+thomasB2 <- readRDS("C:/Users/clw840/Documents/thomasB2.rds")
+#```
+#merge phylogenetic tree with phyloseq object
+#useful later when we are working with distane measures (wt. unifrac)
+#```{r}`
+thomasB2phylo = merge_phyloseq(thomasB2, thomasBtree)
+#```
+#set colour theme for this part of the exercise
+#```{r}`
+theme_set(theme_bw())
+pal = "Set1"
+scale_colour_discrete <-  function(palname=pal, ...){
+scale_colour_brewer(palette=palname, ...)
+}
+scale_fill_discrete <-  function(palname=pal, ...){
+scale_fill_brewer(palette=palname, ...)
+}
+#```
+#prune all taxa across samples with 0 counts
+#```{r}
+thomasB2prune0 <- prune_taxa(taxa_sums(thomasB2phylo) > 0, thomasB2phylo)
+#```
+#let's have a look at the alpha diversity between CRC and healthy samples
+#alpha diversity shows us the within sample diversity, i.e. how many taxa there are within each sample
+#we can compare this for all samples in CRC against all samples in healthy individuals
+#```{r]
+plot_richness(thomasB2prune0, measures=c("Observed", "Shannon"), x="disease", color="disease")
+#```
+#Are there any differences between healthy and CRC?
+#What does this tell us about the difference between healthy individuals
+#and individuals with CRC?
+#how many samples do we have in the dataset for each condition?
+nsamples(thomasB2prune0)
+#does the plot accurately reflect the number of samples in the dataset?
+p = plot_richness(thomasBprune0, measures=c("Observed", "Shannon"), x="disease", color="disease")
+p + geom_jitter(width=0.1)
+#check the number of samples again now.
+#adding "jitter" to the plot helps us examine the distribution of datapoints.
+#we can also use a violin plot (that shows probablility density) as a nice visualisation of the distribution
+p + aes(fill = disease) + geom_violin(trim=FALSE, colour = "black", weight = 1) + geom_jitter(width = 0.2, colour = "black")
+
+#beta diversity is the diversity in taxa composition where alpha was about examining within-sample diversity
+#One useful measure of beta-diversity is Weighted Unifrac
+#thomBwtunifrac <- phyloseq::distance(thomasBphylo, method="wunifrac")
+
+ord = ordinate(thomasB2prune0, "PCoA", "unifrac", weighted=TRUE)
+ordplot <- plot_ordination(thomasBprune0, ord, color="disease", title="Weighted Unifrac Distance CRC vs Healthy")
+ordplot +
+stat_ellipse(type = "norm") +
+theme_bw()
+#another useful measure of beta-doversity is Bray_curtis dissimilarity
+ordbray = ordinate(thomasB2prune0, "NMDS", "bray", weighted=TRUE)
+ordbrayplot <- plot_ordination(thomasBprune0, ordbray, color="disease", title="Bray-Curtis Dissimilarity CRC vs Healthy")
+ordbrayplot +
+stat_ellipse(type = "norm") +
+theme_bw()
+#what do these plots show us in terms of the diversity between the CRC vs the healthy samples?
+#Is there a consistent difference between CRC and healthy samples?
+#Differential aundance analysis lets us know if there are any taxa which might be 
+#sigificantly different in abundance between the CRC and healthy groups
+
+#
+thomasB2ds = phyloseq_to_deseq2(thomasB2prune0, ~ disease)
+thomasB2ds$disease <- relevel( thomasB2ds$disease, "healthy")
+thomasB2ds = DESeq(thomasB2ds, test="Wald", fitType="parametric")
+thomasB2res = results(thomasB2ds, cooksCutoff = FALSE)
+alpha = 0.005
+sigtab = thomasB2res[which(thomasB2res$padj < alpha), ]
+sigtab = cbind(as(sigtab, "data.frame"), as(tax_table(thomasB2prune0)[rownames(sigtab), ], "matrix"))
+View(sigtab)
+library("ggplot2")
+theme_set(theme_bw())
+scale_fill_discrete <- function(palname = "Set2", ...) {
++ scale_fill_brewer(palette = palname, ...)
+}
+x = tapply(sigtab$log2FoldChange, sigtab$Genus, function(x) max(x))
+x = sort(x, TRUE)
+sigtab$Genus = factor(as.character(sigtab$Genus), levels=names(x))
+ggplot(sigtab, aes(x=Genus, y=log2FoldChange, color=Phylum, )) + geom_point(size=6) +
+theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust=0.5)) + ggtitle("Log2 Fold Change Genus Abundance (CRC vs Healthy)")
+
+#to see this at species level:
+x = tapply(sigtab$log2FoldChange, sigtab$Species, function(x) max(x))
+x = sort(x, TRUE)
+sigtab$Species = factor(as.character(sigtab$Species), levels=names(x))save.image(file='C:/Users/clw840/Documents/crc.RData')
+
+ggplot(sigtab, aes(x=Species, y=log2FoldChange, color=Phylum)) + geom_point(size=6) +
+theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))+ ggtitle("Log2 Fold Change Species Abundance (CRC vs Healthy)")
